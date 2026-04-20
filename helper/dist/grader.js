@@ -12,29 +12,48 @@ const LINE_TOLERANCE = 2;
 export function gradeShowMe(input) {
     const u = input.userInput.trim();
     const expectedPathNorm = normalizePath(input.expectedPath);
-    // Try to extract `path:line` and snippet (separated by `|` or whitespace)
-    const pathPart = u.split(/[|\s]/)[0] ?? '';
-    const [rawPath, rawLine] = pathPart.split(':');
-    const userPath = normalizePath(rawPath);
-    const userLine = rawLine ? Number.parseInt(rawLine, 10) : undefined;
-    const pathExact = userPath === expectedPathNorm;
-    const filenameOnly = !pathExact && basename(userPath) === basename(expectedPathNorm);
-    if (!pathExact && !filenameOnly) {
-        return { verdict: 'wrong' };
+    const expectedBase = basename(expectedPathNorm);
+    // Candidate tokens: split on whitespace and pipes; keep tokens that look like paths
+    // (contain a slash, OR have a file extension).
+    const candidates = u
+        .split(/[|\s,;]+/)
+        .map(t => t.replace(/[.,;:)]+$/, '')) // strip trailing punctuation
+        .filter(Boolean);
+    let bestMatch = null;
+    for (const tok of candidates) {
+        const [rawPath, rawLine] = tok.split(':');
+        const norm = normalizePath(rawPath);
+        const line = rawLine && /^\d+$/.test(rawLine) ? Number.parseInt(rawLine, 10) : undefined;
+        if (!norm.includes('/') && !/\.[a-zA-Z0-9]+$/.test(norm))
+            continue; // not path-like
+        const exact = norm === expectedPathNorm;
+        const filenameMatch = !exact && basename(norm) === expectedBase;
+        if (exact) {
+            bestMatch = { path: norm, line, exact: true };
+            break; // exact wins; stop searching
+        }
+        if (filenameMatch && !bestMatch) {
+            bestMatch = { path: norm, line, exact: false };
+        }
     }
-    let verdict = pathExact ? 'correct' : 'partial';
+    if (!bestMatch)
+        return { verdict: 'wrong' };
+    let verdict = bestMatch.exact ? 'correct' : 'partial';
     if (input.expectedLine !== undefined) {
-        if (userLine === undefined) {
+        if (bestMatch.line === undefined) {
             verdict = 'partial';
         }
-        else if (Math.abs(userLine - input.expectedLine) > LINE_TOLERANCE) {
+        else if (Math.abs(bestMatch.line - input.expectedLine) > LINE_TOLERANCE) {
             verdict = 'partial';
         }
     }
     if (input.expectedSnippet) {
-        const snippetIdx = u.indexOf('|');
-        const userSnippet = snippetIdx !== -1 ? u.slice(snippetIdx + 1).trim() : '';
-        const snippetMatches = userSnippet.toLowerCase().includes(input.expectedSnippet.toLowerCase());
+        // Strip all path-looking tokens from the input before matching the snippet.
+        const withoutPaths = u
+            .split(/\s+/)
+            .filter(t => !/\//.test(t) && !/\.[a-zA-Z0-9]+$/.test(t.replace(/[.,;:)]+$/, '')))
+            .join(' ');
+        const snippetMatches = withoutPaths.toLowerCase().includes(input.expectedSnippet.toLowerCase());
         if (!snippetMatches)
             verdict = 'partial';
     }
