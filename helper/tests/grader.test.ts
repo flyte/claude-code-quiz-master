@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { gradeMcq } from '../src/grader.js';
+import { gradeMcq, gradeShowMe } from '../src/grader.js';
 
 describe('gradeMcq', () => {
   it('returns correct on matching letter (case-insensitive)', () => {
@@ -31,5 +31,64 @@ describe('gradeMcq', () => {
       verdict: 'wrong',
       routedToFreeForm: false,
     });
+  });
+});
+
+describe('gradeShowMe', () => {
+  it('returns correct on exact path match', () => {
+    expect(gradeShowMe({
+      userInput: 'src/auth/login.ts',
+      expectedPath: 'src/auth/login.ts',
+    })).toEqual({ verdict: 'correct' });
+  });
+
+  it('returns wrong on path mismatch', () => {
+    expect(gradeShowMe({
+      userInput: 'src/auth/logout.ts',
+      expectedPath: 'src/auth/login.ts',
+    })).toEqual({ verdict: 'wrong' });
+  });
+
+  it('treats leading ./ as equivalent', () => {
+    expect(gradeShowMe({
+      userInput: './src/auth/login.ts',
+      expectedPath: 'src/auth/login.ts',
+    })).toEqual({ verdict: 'correct' });
+  });
+
+  it('returns partial when only filename matches (not full path)', () => {
+    expect(gradeShowMe({
+      userInput: 'login.ts',
+      expectedPath: 'src/auth/login.ts',
+    })).toEqual({ verdict: 'partial' });
+  });
+
+  it('matches line number within ±2', () => {
+    expect(gradeShowMe({
+      userInput: 'src/auth/login.ts:42',
+      expectedPath: 'src/auth/login.ts',
+      expectedLine: 40,
+    })).toEqual({ verdict: 'correct' });
+    expect(gradeShowMe({
+      userInput: 'src/auth/login.ts:46',
+      expectedPath: 'src/auth/login.ts',
+      expectedLine: 40,
+    })).toEqual({ verdict: 'partial' });
+  });
+
+  it('matches snippet by case-insensitive substring', () => {
+    expect(gradeShowMe({
+      userInput: 'src/auth/login.ts | function VerifyToken',
+      expectedPath: 'src/auth/login.ts',
+      expectedSnippet: 'function verifyToken',
+    })).toEqual({ verdict: 'correct' });
+  });
+
+  it('returns partial if path correct but snippet completely missing', () => {
+    expect(gradeShowMe({
+      userInput: 'src/auth/login.ts | doSomethingElse',
+      expectedPath: 'src/auth/login.ts',
+      expectedSnippet: 'function verifyToken',
+    })).toEqual({ verdict: 'partial' });
   });
 });
