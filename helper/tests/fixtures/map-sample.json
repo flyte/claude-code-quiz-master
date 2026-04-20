@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "builtAtSha": "abc",
+  "builtAt": "2026-04-20T10:00:00Z",
+  "fileCount": 12,
+  "modules": [
+    { "path": "src/auth", "summary": "JWT auth", "keySymbols": ["login", "verifyToken"], "entrypoints": ["src/auth/index.ts"] },
+    { "path": "src/payments", "summary": "Stripe billing", "keySymbols": ["charge", "refund"], "entrypoints": ["src/payments/index.ts"] },
+    { "path": "src/cache", "summary": "Redis cache", "keySymbols": ["get", "set"], "entrypoints": ["src/cache/index.ts"] }
+  ],
+  "globalSymbols": [],
+  "architectureNotes": "auth and payments share a session middleware"
+}
