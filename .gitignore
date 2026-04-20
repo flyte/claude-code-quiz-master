@@ -1,5 +1,5 @@
 .claude/quiz-state.json
-.claude/quiz-state.bak.json
+.claude/quiz-state.bak.*.json
 .claude/quiz-map.json
 .DS_Store
 *.log
