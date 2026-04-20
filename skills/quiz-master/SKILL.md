@@ -39,15 +39,23 @@ User arguments are passed through from `/quiz`. Parse:
 3. **Build / refresh the map** when needed (see "Map building" below). On `--refresh`, force.
 4. **Compute recent-changes pool.** `git changed-since --cwd . --since <lastQuizSha>` (or all files if no prior quiz). This pool feeds type-D questions.
 5. **Generate Q1 + ground it (blocking subagent).** See "Question generation" and "Subagent grounding".
-6. **Loop until user types `stop` / `done` / `exit`:**
-   1. Present Q<sub>n</sub>.
-   2. Immediately dispatch the Q<sub>n+1</sub> grounding subagent with `run_in_background: true`. Depth: one only.
-   3. Wait for user's answer.
-   4. Grade via the helper (`grade mcq` or `grade show-me`); for free-form, you grade semantically yourself and emit `correct | partial | wrong`.
-   5. If wrong/partial, offer: *"Want to discuss this one?"* If yes → discuss mode. If user typed `idk` / `skip` / `explain` → enter discuss mode automatically, no penalty.
-   6. Call `state record-answer --type X --module Y --verdict V` (use `partial` for skipped/discussed-without-resolution).
-   7. Await Q<sub>n+1</sub> subagent (usually already done); loop.
-7. **On exit**:
+6. **Initialize session state:** `reviewQueue = []`, `currentQuestionIndex = 0`.
+7. **Loop until user types `stop` / `done` / `exit`:**
+   1. **Check review queue:** If any item has `currentQuestionIndex - missedAtIndex >= 5`, pop the oldest (FIFO) and mark `isReview = true`. Otherwise `isReview = false`.
+   2. **Present question:**
+      - If `isReview`: show the queued question with "(Review)" prefix.
+      - Else: present the prefetched new question (or Q1 on first iteration).
+   3. Dispatch next new question grounding with `run_in_background: true`. (Always prefetch — if a review question is due next turn, the prefetched question just waits.)
+   4. Wait for user's answer.
+   5. Grade via helper or semantically.
+   6. **Handle wrong/partial:**
+      - If `isReview`: explain ground truth differently (rephrase, simpler language), offer discuss mode, do NOT add back to queue.
+      - Else: offer discuss as normal. If user didn't skip (`idk`/`skip`/`explain`), add to `reviewQueue` with current `questionText`, `questionType`, `module`, `groundedAnswer`, and `missedAtIndex = currentQuestionIndex`.
+   7. Call `state record-answer --type X --module Y --verdict V`.
+   8. If `isReview` and verdict is `correct`: brief acknowledgment — "Got it this time."
+   9. Increment `currentQuestionIndex`.
+   10. Loop.
+8. **On exit**:
    - Call `state session-summary --path .claude/quiz-state.json [--since <sessionStartIso>]` to get `{totalAnswered, verdictCounts, score, accuracy, byType, weakModules, skillLevel}`. Do NOT compute this yourself — use the returned object. Present it to the user in whatever format feels clear (a few lines; no heavy formatting).
    - Mention discussed questions by name/topic — those you track yourself in-session since they're not recorded as a distinct verdict.
    - Persist the new `lastQuizSha`: get HEAD via `git head-sha --cwd .`, then `state set-last-sha --path .claude/quiz-state.json --sha <sha>`. Skip in non-git directories.
