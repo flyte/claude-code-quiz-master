@@ -1,0 +1,11 @@
+{
+  "name": "claude-code-quiz-master",
+  "version": "0.1.0",
+  "description": "Quiz the user on their own codebase to counter agentic context loss.",
+  "author": {
+    "name": "flyte",
+    "email": "claude-code-quiz-master@failcode.co.uk"
+  },
+  "homepage": "https://github.com/flyte/claude-code-quiz-master",
+  "license": "MIT"
+}
