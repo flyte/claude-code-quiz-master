@@ -2,8 +2,9 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { mkdtempSync, rmSync, writeFileSync, readFileSync, copyFileSync, readdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { loadState, saveState, recordAnswer } from '../src/state.js';
+import { loadState, saveState, recordAnswer, applySkillDrift } from '../src/state.js';
 import { defaultState } from '../src/types.js';
+import type { AnswerEntry } from '../src/types.js';
 
 let dir: string;
 
@@ -90,5 +91,71 @@ describe('recordAnswer', () => {
     const s = defaultState();
     recordAnswer(s, { type: 'A', module: 'x', verdict: 'correct', timestamp: '2026-04-20T10:00:00Z' });
     expect(s.rollingWindow).toHaveLength(0);
+  });
+});
+
+function answers(items: Array<Partial<AnswerEntry>>): AnswerEntry[] {
+  return items.map((p, i) => ({
+    type: p.type ?? 'A',
+    module: p.module ?? 'm',
+    verdict: p.verdict ?? 'correct',
+    timestamp: `2026-04-20T10:${String(i).padStart(2, '0')}:00Z`,
+  }));
+}
+
+describe('applySkillDrift', () => {
+  it('keeps level when window is too small', () => {
+    const s = { ...defaultState(), skillLevel: 'beginner' as const, rollingWindow: answers([{ verdict: 'correct' }]) };
+    expect(applySkillDrift(s).skillLevel).toBe('beginner');
+  });
+
+  it('promotes beginner to intermediate when accuracy >= 80% AND >= 5 hard-type questions', () => {
+    const window = answers([
+      ...Array(10).fill({ type: 'A', verdict: 'correct' }),
+      ...Array(6).fill({ type: 'C', verdict: 'correct' }),
+      ...Array(4).fill({ type: 'A', verdict: 'wrong' }),
+    ]);
+    const s = { ...defaultState(), skillLevel: 'beginner' as const, rollingWindow: window };
+    expect(applySkillDrift(s).skillLevel).toBe('intermediate');
+  });
+
+  it('does not promote when accuracy is high but no hard-type questions', () => {
+    const window = answers(Array(20).fill({ type: 'A', verdict: 'correct' }));
+    const s = { ...defaultState(), skillLevel: 'beginner' as const, rollingWindow: window };
+    expect(applySkillDrift(s).skillLevel).toBe('beginner');
+  });
+
+  it('promotes intermediate to expert when accuracy >= 80% AND >= 5 type-D answers', () => {
+    const window = answers([
+      ...Array(11).fill({ type: 'B', verdict: 'correct' }),
+      ...Array(5).fill({ type: 'D', verdict: 'correct' }),
+      ...Array(4).fill({ type: 'B', verdict: 'wrong' }),
+    ]);
+    const s = { ...defaultState(), skillLevel: 'intermediate' as const, rollingWindow: window };
+    expect(applySkillDrift(s).skillLevel).toBe('expert');
+  });
+
+  it('demotes when accuracy <= 40%', () => {
+    const window = answers([
+      ...Array(8).fill({ verdict: 'correct' }),
+      ...Array(12).fill({ verdict: 'wrong' }),
+    ]);
+    const s = { ...defaultState(), skillLevel: 'expert' as const, rollingWindow: window };
+    expect(applySkillDrift(s).skillLevel).toBe('intermediate');
+  });
+
+  it('does not demote below beginner', () => {
+    const window = answers(Array(20).fill({ verdict: 'wrong' }));
+    const s = { ...defaultState(), skillLevel: 'beginner' as const, rollingWindow: window };
+    expect(applySkillDrift(s).skillLevel).toBe('beginner');
+  });
+
+  it('counts partial as half-correct toward accuracy', () => {
+    const window = answers([
+      ...Array(10).fill({ verdict: 'partial' }),
+      ...Array(10).fill({ verdict: 'wrong' }),
+    ]);
+    const s = { ...defaultState(), skillLevel: 'expert' as const, rollingWindow: window };
+    expect(applySkillDrift(s).skillLevel).toBe('expert');
   });
 });
