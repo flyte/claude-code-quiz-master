@@ -107,4 +107,33 @@ describe('gradeShowMe', () => {
       expectedSnippet: 'login',
     })).toEqual({ verdict: 'partial' });
   });
+
+  it('accepts prose answer that embeds a recognisable path token', () => {
+    expect(gradeShowMe({
+      userInput: 'makes a backup of the corrupt state, but not sure why. backupCorrupt() in state.ts',
+      expectedPath: 'helper/src/state.ts',
+    })).toEqual({ verdict: 'partial' }); // filename match only, not full path → partial
+  });
+
+  it('accepts prose answer with full path embedded', () => {
+    expect(gradeShowMe({
+      userInput: 'the backup is created in helper/src/state.ts by the backupCorrupt function',
+      expectedPath: 'helper/src/state.ts',
+    })).toEqual({ verdict: 'correct' });
+  });
+
+  it('prefers exact path match over filename-only when both appear', () => {
+    expect(gradeShowMe({
+      userInput: 'at helper/src/state.ts:42 in state.ts',
+      expectedPath: 'helper/src/state.ts',
+      expectedLine: 40,
+    })).toEqual({ verdict: 'correct' });
+  });
+
+  it('still returns wrong when no path-like token is found', () => {
+    expect(gradeShowMe({
+      userInput: 'i have no idea',
+      expectedPath: 'src/auth/login.ts',
+    })).toEqual({ verdict: 'wrong' });
+  });
 });
