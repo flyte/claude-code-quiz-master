@@ -1,6 +1,6 @@
 {
   "name": "claude-code-quiz-master",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Quiz the user on their own codebase to counter agentic context loss.",
   "author": {
     "name": "flyte",
