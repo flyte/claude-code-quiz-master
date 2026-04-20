@@ -17,6 +17,8 @@ node ${CLAUDE_PLUGIN_ROOT}/helper/dist/cli.js <subcommand> [options]
 
 **Always invoke the helper for these operations — never reproduce its logic inline.** The helper is the source of truth. If you find yourself doing path normalisation, line-tolerance math, or rolling-window arithmetic in your head, stop and call the helper.
 
+Use the helper for summaries too: `state session-summary` computes score, per-type breakdown, and weak modules from the rolling window. Never do this math yourself.
+
 State file: `.claude/quiz-state.json` (project-relative).
 Map file: `.claude/quiz-map.json` (project-relative).
 
@@ -32,8 +34,8 @@ User arguments are passed through from `/quiz`. Parse:
 
 ## Session lifecycle
 
-1. **Load state.** If the state file is missing, the helper returns defaults (intermediate); on a true first-run, briefly ask the user to confirm or pick their starting level, then `state set-level`.
-2. **Check map staleness.** Get HEAD via `git head-sha --cwd .`. If non-git, no map needed (recent-changes pool will be empty). Else compare against `quiz-map.json`'s `builtAtSha`, file-change count (`git changed-since --cwd . --since <mapSha>`), and age. Call `map check-staleness` to decide.
+1. **Load state.** Call `state load --path .claude/quiz-state.json` (alias of `state get`). If the state file is missing, the helper returns defaults (intermediate). On a true first-run (first-time use in this project AND you're not running under auto mode), briefly ask the user to confirm or pick their starting level, then `state set-level`. In auto mode, skip the confirmation and accept the default.
+2. **Check map staleness.** Call `map check-staleness --map-path .claude/quiz-map.json --expected-schema-version 1 --head-sha <sha> --changed-file-count <n>` (the `--map-path` convenience reads the file's sha/version/age automatically, or returns `{refresh:true,reason:'missing'}` when absent / `{refresh:true,reason:'corrupt'}` when invalid). Get HEAD via `git head-sha --cwd .`. Get `changedFileCount` via `git changed-since --cwd . --since <mapSha>` then `.length` — but when the map is missing/corrupt you can skip the diff and go straight to refresh.
 3. **Build / refresh the map** when needed (see "Map building" below). On `--refresh`, force.
 4. **Compute recent-changes pool.** `git changed-since --cwd . --since <lastQuizSha>` (or all files if no prior quiz). This pool feeds type-D questions.
 5. **Generate Q1 + ground it (blocking subagent).** See "Question generation" and "Subagent grounding".
@@ -45,7 +47,10 @@ User arguments are passed through from `/quiz`. Parse:
    5. If wrong/partial, offer: *"Want to discuss this one?"* If yes → discuss mode. If user typed `idk` / `skip` / `explain` → enter discuss mode automatically, no penalty.
    6. Call `state record-answer --type X --module Y --verdict V` (use `partial` for skipped/discussed-without-resolution).
    7. Await Q<sub>n+1</sub> subagent (usually already done); loop.
-7. **On exit**: print summary (score, type breakdown, weak areas, discussed questions). Then persist the new `lastQuizSha`: get HEAD via `git head-sha --cwd .`, then `state set-last-sha --path .claude/quiz-state.json --sha <sha>`. Skip this step in non-git directories.
+7. **On exit**:
+   - Call `state session-summary --path .claude/quiz-state.json [--since <sessionStartIso>]` to get `{totalAnswered, verdictCounts, score, accuracy, byType, weakModules, skillLevel}`. Do NOT compute this yourself — use the returned object. Present it to the user in whatever format feels clear (a few lines; no heavy formatting).
+   - Mention discussed questions by name/topic — those you track yourself in-session since they're not recorded as a distinct verdict.
+   - Persist the new `lastQuizSha`: get HEAD via `git head-sha --cwd .`, then `state set-last-sha --path .claude/quiz-state.json --sha <sha>`. Skip in non-git directories.
 
 ## Question generation
 
@@ -137,6 +142,10 @@ In discuss mode you:
 
 ## Map building
 
+The map build is I/O-heavy and expensive on your context. Prefer delegating it to a Task subagent (Haiku is fine) rather than walking the repo inline. Give the subagent the required schema and ask it to return the JSON. You then pipe its output through `map save`.
+
+If you do build inline (e.g., for a very small repo or a repo you've already read extensively), follow these steps:
+
 When the helper says refresh:
 
 1. Walk the repo: read `package.json` / `tsconfig.json` / `pyproject.toml` / `Cargo.toml` / `go.mod` / `README*` first to ID stack and entrypoints.
@@ -161,6 +170,10 @@ When the helper says refresh:
 - **State file corrupted** — helper auto-backs up and returns defaults; mention this to the user.
 - **Map build fails partway** — proceed with partial map, warn, recommend `--refresh` later.
 - **User runs `/quiz` mid-conversation** — start cleanly on this turn; don't interfere with anything in flight.
+
+## IDE / environment reminders
+
+Your host Claude Code session may inject system-reminders when the user opens files, selects lines, or moves around in their IDE. Ignore these unless the user explicitly references the selection or the quiz question happens to concern that file. They are ambient context, not quiz input.
 
 ## Style
 
