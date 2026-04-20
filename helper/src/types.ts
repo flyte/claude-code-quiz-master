@@ -61,8 +61,8 @@ export const MapSchema = z.object({
 });
 export type CodebaseMap = z.infer<typeof MapSchema>;
 
-export const CURRENT_STATE_SCHEMA_VERSION = 1;
-export const CURRENT_MAP_SCHEMA_VERSION = 1;
+export const CURRENT_STATE_SCHEMA_VERSION = 1 as const;
+export const CURRENT_MAP_SCHEMA_VERSION = 1 as const;
 
 export function defaultState(): State {
   return {
