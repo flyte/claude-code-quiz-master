@@ -115,7 +115,7 @@ Every MCQ ends with **"✏️ Type your own answer"** as the final option; selec
 - State stores a rolling window of the **last 20 answers**: `{type, module, verdict, timestamp}` where verdict ∈ `correct | partial | wrong`. The `module` field is the path of the primary module the question targeted (used only for remediation bias in scope resolution — **not** for per-module skill levels, which remain a v2 non-goal).
 - Discuss-mode entries and skips count as `partial` (not `wrong`) — don't punish honest "I don't know" over guessing.
 - **Promote** (beginner → intermediate, intermediate → expert): rolling accuracy ≥ 80% AND at least 5 questions at the current level's harder types (C or D for beginner→int; D for int→expert).
-- **Demote**: rolling accuracy ≤ 40% → drop one level.
+- **Demote**: at least 60% of the rolling window are outright `wrong` (partial does not count against you) → drop one level. This protects honest "I don't know" responses from triggering demotion.
 - **Seed**: first-run interactive prompt asks user to pick starting level (default: intermediate).
 
 ### Manual overrides
