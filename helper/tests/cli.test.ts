@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, rmSync, readFileSync, existsSync } from 'node:fs';
+import { mkdtempSync, rmSync, readFileSync, existsSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -63,6 +63,13 @@ describe('cli: state', () => {
     const s = JSON.parse(readFileSync(path, 'utf8'));
     expect(s.lastQuizSha).toBe('deadbeef');
   });
+
+  it('load is an alias for get', () => {
+    const path = join(dir, 'state.json');
+    run(['state', 'init', '--path', path]);
+    const out = run(['state', 'load', '--path', path]);
+    expect(JSON.parse(out).skillLevel).toBe('intermediate');
+  });
 });
 
 describe('cli: grade', () => {
@@ -89,6 +96,52 @@ describe('cli: map', () => {
       '--map-age-days', '1',
     ]);
     expect(JSON.parse(out)).toEqual({ refresh: false });
+  });
+
+  it('check-staleness with --map-path returns {refresh, reason:"missing"} when map file absent', () => {
+    const out = run([
+      'map', 'check-staleness',
+      '--map-path', join(dir, 'does-not-exist.json'),
+      '--expected-schema-version', '1',
+      '--head-sha', 'abc',
+      '--changed-file-count', '0',
+    ]);
+    expect(JSON.parse(out)).toEqual({ refresh: true, reason: 'missing' });
+  });
+
+  it('check-staleness with --map-path reads sha + version + age from file', () => {
+    const mapPath = join(dir, 'm.json');
+    const mapJson = JSON.stringify({
+      schemaVersion: 1,
+      builtAtSha: 'sha-x',
+      builtAt: '2026-04-20T10:00:00Z',
+      fileCount: 0,
+      modules: [],
+      globalSymbols: [],
+      architectureNotes: '',
+    });
+    run(['map', 'save', '--path', mapPath], mapJson);
+    const out = run([
+      'map', 'check-staleness',
+      '--map-path', mapPath,
+      '--expected-schema-version', '1',
+      '--head-sha', 'sha-x',
+      '--changed-file-count', '0',
+    ]);
+    expect(JSON.parse(out)).toEqual({ refresh: false });
+  });
+
+  it('check-staleness with --map-path returns {refresh, reason:"corrupt"} when map JSON invalid', () => {
+    const mapPath = join(dir, 'm-bad.json');
+    writeFileSync(mapPath, '{ not json');
+    const out = run([
+      'map', 'check-staleness',
+      '--map-path', mapPath,
+      '--expected-schema-version', '1',
+      '--head-sha', 'abc',
+      '--changed-file-count', '0',
+    ]);
+    expect(JSON.parse(out)).toEqual({ refresh: true, reason: 'corrupt' });
   });
 
   it('save writes valid map JSON from stdin to the given path', () => {

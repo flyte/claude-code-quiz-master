@@ -10,7 +10,7 @@ export interface StalenessInput {
   forceRefresh: boolean;
 }
 
-export type RefreshReason = 'force' | 'schema' | 'age' | 'drift';
+export type RefreshReason = 'force' | 'schema' | 'age' | 'drift' | 'missing' | 'corrupt';
 
 export interface StalenessResult {
   refresh: boolean;

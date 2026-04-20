@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { Command } from 'commander';
-import { writeFileSync, readFileSync } from 'node:fs';
+import { writeFileSync, readFileSync, existsSync, statSync } from 'node:fs';
 import { loadState, saveState, recordAnswer, applySkillDrift } from './state.js';
 import { gradeMcq, gradeShowMe } from './grader.js';
 import { shouldRefreshMap, resolveScope } from './map.js';
@@ -19,6 +19,7 @@ state.command('init')
   });
 
 state.command('get')
+  .alias('load')
   .requiredOption('--path <path>')
   .action((opts) => {
     process.stdout.write(JSON.stringify(loadState(opts.path)));
@@ -90,21 +91,49 @@ grade.command('show-me')
 const map = program.command('map');
 
 map.command('check-staleness')
-  .requiredOption('--map-schema-version <n>', '', (v) => parseInt(v, 10))
+  .option('--map-path <path>', 'convenience: read map file for its own sha/version/age')
   .requiredOption('--expected-schema-version <n>', '', (v) => parseInt(v, 10))
-  .requiredOption('--map-sha <sha>')
   .requiredOption('--head-sha <sha>')
   .requiredOption('--changed-file-count <n>', '', (v) => parseInt(v, 10))
-  .requiredOption('--map-age-days <n>', '', (v) => parseInt(v, 10))
+  .option('--map-schema-version <n>', '', (v) => parseInt(v, 10))
+  .option('--map-sha <sha>')
+  .option('--map-age-days <n>', '', (v) => parseInt(v, 10))
   .option('--force')
   .action((opts) => {
+    let mapSchemaVersion: number | undefined = opts.mapSchemaVersion;
+    let mapSha: string | undefined = opts.mapSha;
+    let mapAgeDays: number | undefined = opts.mapAgeDays;
+
+    if (opts.mapPath) {
+      if (!existsSync(opts.mapPath)) {
+        process.stdout.write(JSON.stringify({ refresh: true, reason: 'missing' }));
+        return;
+      }
+      try {
+        const raw = readFileSync(opts.mapPath, 'utf8');
+        const parsed = MapSchema.parse(JSON.parse(raw));
+        mapSchemaVersion = parsed.schemaVersion;
+        mapSha = parsed.builtAtSha;
+        const ms = statSync(opts.mapPath).mtimeMs;
+        mapAgeDays = (Date.now() - ms) / (1000 * 60 * 60 * 24);
+      } catch {
+        process.stdout.write(JSON.stringify({ refresh: true, reason: 'corrupt' }));
+        return;
+      }
+    }
+
+    if (mapSchemaVersion === undefined || mapSha === undefined || mapAgeDays === undefined) {
+      process.stderr.write('quiz-helper: must provide --map-path or all of --map-schema-version/--map-sha/--map-age-days\n');
+      process.exit(1);
+    }
+
     process.stdout.write(JSON.stringify(shouldRefreshMap({
-      mapSchemaVersion: opts.mapSchemaVersion,
+      mapSchemaVersion,
       expectedSchemaVersion: opts.expectedSchemaVersion,
-      mapSha: opts.mapSha,
+      mapSha,
       headSha: opts.headSha,
       changedFileCount: opts.changedFileCount,
-      mapAgeDays: opts.mapAgeDays,
+      mapAgeDays,
       forceRefresh: !!opts.force,
     })));
   });
