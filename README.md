@@ -9,7 +9,7 @@ Agentic coding lets you ship features without reading the code Claude writes. Wh
 In Claude Code:
 
 ```
-/plugin marketplace add flyte/claude-code-quiz-master
+/plugin marketplace add flyte/claude-plugins
 /plugin install claude-code-quiz-master@flyte
 ```
 
