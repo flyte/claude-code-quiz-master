@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { mkdtempSync, rmSync, writeFileSync, readFileSync, copyFileSync, readdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { loadState, saveState } from '../src/state.js';
+import { loadState, saveState, recordAnswer } from '../src/state.js';
 import { defaultState } from '../src/types.js';
 
 let dir: string;
@@ -60,5 +60,35 @@ describe('saveState', () => {
     const tempPattern = /\.tmp$/;
     const files = readdirSync(dir);
     expect(files.filter((f: string) => tempPattern.test(f))).toHaveLength(0);
+  });
+});
+
+describe('recordAnswer', () => {
+  it('appends a new entry to the rolling window', () => {
+    const s = defaultState();
+    const next = recordAnswer(s, { type: 'A', module: 'src/auth', verdict: 'correct', timestamp: '2026-04-20T10:00:00Z' });
+    expect(next.rollingWindow).toHaveLength(1);
+    expect(next.rollingWindow[0].verdict).toBe('correct');
+  });
+
+  it('caps the rolling window at 20 entries (FIFO)', () => {
+    let s = defaultState();
+    for (let i = 0; i < 25; i++) {
+      s = recordAnswer(s, {
+        type: 'A',
+        module: `mod-${i}`,
+        verdict: 'correct',
+        timestamp: `2026-04-20T10:${String(i).padStart(2, '0')}:00Z`,
+      });
+    }
+    expect(s.rollingWindow).toHaveLength(20);
+    expect(s.rollingWindow[0].module).toBe('mod-5');
+    expect(s.rollingWindow[19].module).toBe('mod-24');
+  });
+
+  it('does not mutate the input state', () => {
+    const s = defaultState();
+    recordAnswer(s, { type: 'A', module: 'x', verdict: 'correct', timestamp: '2026-04-20T10:00:00Z' });
+    expect(s.rollingWindow).toHaveLength(0);
   });
 });

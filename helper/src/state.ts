@@ -1,6 +1,6 @@
 import { existsSync, readFileSync, writeFileSync, renameSync, mkdirSync, copyFileSync } from 'node:fs';
 import { dirname, join, basename } from 'node:path';
-import { State, StateSchema, defaultState } from './types.js';
+import { State, StateSchema, defaultState, AnswerEntry } from './types.js';
 
 export function loadState(path: string): State {
   if (!existsSync(path)) {
@@ -28,6 +28,16 @@ export function saveState(path: string, state: State): void {
   const tmp = `${path}.tmp`;
   writeFileSync(tmp, JSON.stringify(state, null, 2), 'utf8');
   renameSync(tmp, path);
+}
+
+const ROLLING_WINDOW_SIZE = 20;
+
+export function recordAnswer(state: State, entry: AnswerEntry): State {
+  const next = [...state.rollingWindow, entry];
+  const trimmed = next.length > ROLLING_WINDOW_SIZE
+    ? next.slice(next.length - ROLLING_WINDOW_SIZE)
+    : next;
+  return { ...state, rollingWindow: trimmed };
 }
 
 function backupCorrupt(path: string): void {
