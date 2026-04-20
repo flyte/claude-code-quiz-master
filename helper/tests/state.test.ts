@@ -135,7 +135,7 @@ describe('applySkillDrift', () => {
     expect(applySkillDrift(s).skillLevel).toBe('expert');
   });
 
-  it('demotes when accuracy <= 40%', () => {
+  it('demotes when wrong fraction >= 60%', () => {
     const window = answers([
       ...Array(8).fill({ verdict: 'correct' }),
       ...Array(12).fill({ verdict: 'wrong' }),

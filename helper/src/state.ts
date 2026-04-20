@@ -42,7 +42,7 @@ export function recordAnswer(state: State, entry: AnswerEntry): State {
 
 const MIN_WINDOW_FOR_DRIFT = 10;
 const PROMOTE_ACCURACY = 0.8;
-const DEMOTE_ACCURACY = 0.4;
+const DEMOTE_WRONG_FRAC = 0.6;
 const HARD_TYPE_MIN = 5;
 
 const HARD_TYPES_FOR_LEVEL: Record<SkillLevel, QuestionType[]> = {
@@ -84,7 +84,7 @@ export function applySkillDrift(state: State): State {
   }
 
   const wrongCount = w.filter(e => e.verdict === 'wrong').length;
-  if (wrongCount / w.length >= (1 - DEMOTE_ACCURACY)) {
+  if (wrongCount / w.length >= DEMOTE_WRONG_FRAC) {
     const next = NEXT_LEVEL_DOWN[state.skillLevel];
     if (next) {
       return { ...state, skillLevel: next };
