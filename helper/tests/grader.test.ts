@@ -91,4 +91,20 @@ describe('gradeShowMe', () => {
       expectedSnippet: 'function verifyToken',
     })).toEqual({ verdict: 'partial' });
   });
+
+  it('returns partial when expectedLine is set but user omits line number', () => {
+    expect(gradeShowMe({
+      userInput: 'src/auth/login.ts',
+      expectedPath: 'src/auth/login.ts',
+      expectedLine: 40,
+    })).toEqual({ verdict: 'partial' });
+  });
+
+  it('does not match snippet that only appears in the path portion', () => {
+    expect(gradeShowMe({
+      userInput: 'src/auth/login.ts',
+      expectedPath: 'src/auth/login.ts',
+      expectedSnippet: 'login',
+    })).toEqual({ verdict: 'partial' });
+  });
 });

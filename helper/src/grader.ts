@@ -54,13 +54,18 @@ export function gradeShowMe(input: ShowMeGradeInput): ShowMeGradeResult {
 
   let verdict: Verdict = pathExact ? 'correct' : 'partial';
 
-  if (input.expectedLine !== undefined && userLine !== undefined) {
-    const lineDelta = Math.abs(userLine - input.expectedLine);
-    if (lineDelta > LINE_TOLERANCE) verdict = 'partial';
+  if (input.expectedLine !== undefined) {
+    if (userLine === undefined) {
+      verdict = 'partial';
+    } else if (Math.abs(userLine - input.expectedLine) > LINE_TOLERANCE) {
+      verdict = 'partial';
+    }
   }
 
   if (input.expectedSnippet) {
-    const snippetMatches = u.toLowerCase().includes(input.expectedSnippet.toLowerCase());
+    const snippetIdx = u.indexOf('|');
+    const userSnippet = snippetIdx !== -1 ? u.slice(snippetIdx + 1).trim() : '';
+    const snippetMatches = userSnippet.toLowerCase().includes(input.expectedSnippet.toLowerCase());
     if (!snippetMatches) verdict = 'partial';
   }
 
