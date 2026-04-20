@@ -4,7 +4,7 @@
   "plugins": [
     {
       "name": "claude-code-quiz-master",
-      "source": ".",
+      "source": "./",
       "description": "Quiz the user on their own codebase to counter agentic context loss."
     }
   ]
