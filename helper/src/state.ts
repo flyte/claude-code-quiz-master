@@ -33,6 +33,11 @@ export function saveState(path: string, state: State): void {
 function backupCorrupt(path: string): void {
   const dir = dirname(path);
   const base = basename(path, '.json');
-  const backup = join(dir, `${base}.bak.json`);
-  copyFileSync(path, backup);
+  const stamp = Date.now();
+  const backup = join(dir, `${base}.bak.${stamp}.json`);
+  try {
+    copyFileSync(path, backup);
+  } catch {
+    // best-effort; failure to back up must not block recovery
+  }
 }

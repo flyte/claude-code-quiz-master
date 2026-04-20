@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { mkdtempSync, rmSync, writeFileSync, existsSync, readFileSync, copyFileSync, readdirSync } from 'node:fs';
+import { mkdtempSync, rmSync, writeFileSync, readFileSync, copyFileSync, readdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { loadState, saveState } from '../src/state.js';
@@ -34,7 +34,7 @@ describe('loadState', () => {
     copyFileSync('tests/fixtures/state-corrupt.json', path);
     const state = loadState(path);
     expect(state).toEqual(defaultState());
-    expect(existsSync(join(dir, 'state.bak.json'))).toBe(true);
+    expect(readdirSync(dir).some(f => /^state\.bak\.\d+\.json$/.test(f))).toBe(true);
   });
 
   it('backs up and recovers from schema mismatch', () => {
@@ -42,7 +42,7 @@ describe('loadState', () => {
     writeFileSync(path, JSON.stringify({ skillLevel: 'wizard' }));
     const state = loadState(path);
     expect(state).toEqual(defaultState());
-    expect(existsSync(join(dir, 'state.bak.json'))).toBe(true);
+    expect(readdirSync(dir).some(f => /^state\.bak\.\d+\.json$/.test(f))).toBe(true);
   });
 });
 
