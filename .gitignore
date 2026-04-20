@@ -4,5 +4,3 @@
 .DS_Store
 *.log
 
-# Claude Code session transcripts — local debugging artefacts, not source
-*-command-message*.txt
