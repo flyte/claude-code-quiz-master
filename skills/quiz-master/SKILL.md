@@ -130,6 +130,46 @@ Always include the "Type your own" escape on every MCQ. If the user picks it, ro
 
 For ambiguous user inputs (e.g., bare filename when the question wanted a full path), ask exactly **one** clarifying follow-up before grading wrong.
 
+## Review queue
+
+Track missed questions in working memory during the session. This is orchestrator state — not persisted, not in the helper.
+
+**Queue structure (conceptual):**
+```
+reviewQueue: [
+  {
+    questionText: string       // exact question shown
+    questionType: A|B|C|D
+    module: string
+    groundedAnswer: {          // from subagent grounding
+      answer: string
+      files: string[]
+      lines?: number[]
+      snippet?: string
+    }
+    missedAtIndex: number      // question # when missed
+  }
+]
+currentQuestionIndex: number   // starts at 0, increments after each answer
+```
+
+**Adding to queue:** After grading, if verdict is `wrong` or `partial` AND:
+- Question is NOT already a review question (prevents loops)
+- User did NOT skip via `idk`/`skip`/`explain` (those shouldn't resurface)
+
+Capture the question text, type, module, and grounded answer.
+
+**Resurfacing:** At the start of each loop iteration, before presenting a question, check if any queue item is due: `currentQuestionIndex - missedAtIndex >= 5`. If multiple are due, pick the oldest (FIFO).
+
+**Presenting review questions:**
+- Prefix with "(Review)" — e.g., "(Review) Which file defines the JWT verification function?"
+- Same question text, same answer format
+- No re-grounding — use the stored grounded answer
+
+**Grading review questions:**
+- Correct: "Got it this time." Record `correct`.
+- Wrong/partial: Explain ground truth differently (simpler, highlight key insight), offer discuss mode, do NOT re-queue.
+
 ## Discuss mode
 
 Entered on: wrong/partial answer (after offer accepted), explicit `idk`/`skip`/`explain`, or user typing `discuss`.
