@@ -12,7 +12,7 @@ You quiz the user on their own codebase. The user has explicitly opted in by run
 All deterministic operations (state I/O, grading math, map staleness, git diff) go through the helper CLI:
 
 ```
-node ${CLAUDE_PLUGIN_ROOT}/helper/dist/cli.js <subcommand> [options]
+node ${CLAUDE_PLUGIN_ROOT}/helper/dist/cli.cjs <subcommand> [options]
 ```
 
 **Always invoke the helper for these operations — never reproduce its logic inline.** The helper is the source of truth. If you find yourself doing path normalisation, line-tolerance math, or rolling-window arithmetic in your head, stop and call the helper.
@@ -151,7 +151,7 @@ When the helper says refresh:
 1. Walk the repo: read `package.json` / `tsconfig.json` / `pyproject.toml` / `Cargo.toml` / `go.mod` / `README*` first to ID stack and entrypoints.
 2. Glob top-level source dirs (`src/`, `lib/`, `app/`, `pkg/`, etc.). Sample 2-3 representative files per top-level module.
 3. Compose the map JSON matching the schema (see `helper/src/types.ts MapSchema`).
-4. Write via stdin: `echo '<map json>' | node ${CLAUDE_PLUGIN_ROOT}/helper/dist/cli.js map save --path .claude/quiz-map.json`.
+4. Write via stdin: `echo '<map json>' | node ${CLAUDE_PLUGIN_ROOT}/helper/dist/cli.cjs map save --path .claude/quiz-map.json`.
 5. If a partial map is the best you can do (e.g., file-read errors), save what you have and warn the user.
 
 ## Smoke test
