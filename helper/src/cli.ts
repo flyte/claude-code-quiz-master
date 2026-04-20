@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { Command } from 'commander';
 import { writeFileSync, readFileSync, existsSync, statSync } from 'node:fs';
-import { loadState, saveState, recordAnswer, applySkillDrift } from './state.js';
+import { loadState, saveState, recordAnswer, applySkillDrift, summarizeSession } from './state.js';
 import { gradeMcq, gradeShowMe } from './grader.js';
 import { shouldRefreshMap, resolveScope } from './map.js';
 import { isGitRepo, getHeadSha, changedFilesSince } from './git.js';
@@ -58,6 +58,14 @@ state.command('set-last-sha')
   .action((opts) => {
     const s = loadState(opts.path);
     saveState(opts.path, { ...s, lastQuizSha: opts.sha });
+  });
+
+state.command('session-summary')
+  .requiredOption('--path <path>')
+  .option('--since <iso>')
+  .action((opts) => {
+    const s = loadState(opts.path);
+    process.stdout.write(JSON.stringify(summarizeSession(s, opts.since)));
   });
 
 const grade = program.command('grade');

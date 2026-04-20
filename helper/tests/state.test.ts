@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { mkdtempSync, rmSync, writeFileSync, readFileSync, copyFileSync, readdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { loadState, saveState, recordAnswer, applySkillDrift } from '../src/state.js';
+import { loadState, saveState, recordAnswer, applySkillDrift, summarizeSession } from '../src/state.js';
 import { defaultState } from '../src/types.js';
 import type { AnswerEntry } from '../src/types.js';
 
@@ -157,5 +157,62 @@ describe('applySkillDrift', () => {
     ]);
     const s = { ...defaultState(), skillLevel: 'expert' as const, rollingWindow: window };
     expect(applySkillDrift(s).skillLevel).toBe('expert');
+  });
+});
+
+describe('summarizeSession', () => {
+  it('returns empty-ish summary for an empty window', () => {
+    const s = defaultState();
+    const sum = summarizeSession(s);
+    expect(sum.totalAnswered).toBe(0);
+    expect(sum.score).toBe(0);
+    expect(sum.accuracy).toBe(0);
+    expect(sum.weakModules).toEqual([]);
+    expect(sum.byType.A.total).toBe(0);
+  });
+
+  it('counts verdicts, computes weighted score and accuracy', () => {
+    let s = defaultState();
+    s = recordAnswer(s, { type: 'A', module: 'src/x', verdict: 'correct', timestamp: '2026-04-20T10:00:00Z' });
+    s = recordAnswer(s, { type: 'B', module: 'src/y', verdict: 'partial', timestamp: '2026-04-20T10:01:00Z' });
+    s = recordAnswer(s, { type: 'C', module: 'src/z', verdict: 'wrong', timestamp: '2026-04-20T10:02:00Z' });
+    const sum = summarizeSession(s);
+    expect(sum.totalAnswered).toBe(3);
+    expect(sum.verdictCounts).toEqual({ correct: 1, partial: 1, wrong: 1 });
+    expect(sum.score).toBe(1.5);
+    expect(sum.accuracy).toBeCloseTo(0.5);
+  });
+
+  it('breaks down per type', () => {
+    let s = defaultState();
+    s = recordAnswer(s, { type: 'A', module: 'm', verdict: 'correct', timestamp: 't1' });
+    s = recordAnswer(s, { type: 'A', module: 'm', verdict: 'wrong', timestamp: 't2' });
+    s = recordAnswer(s, { type: 'D', module: 'm', verdict: 'correct', timestamp: 't3' });
+    const sum = summarizeSession(s);
+    expect(sum.byType.A).toEqual({ total: 2, correct: 1, partial: 0, wrong: 1 });
+    expect(sum.byType.D).toEqual({ total: 1, correct: 1, partial: 0, wrong: 0 });
+    expect(sum.byType.B.total).toBe(0);
+  });
+
+  it('identifies weak modules (>= 2 wrong) sorted by wrong count descending', () => {
+    let s = defaultState();
+    s = recordAnswer(s, { type: 'A', module: 'weak1', verdict: 'wrong', timestamp: 't1' });
+    s = recordAnswer(s, { type: 'A', module: 'weak1', verdict: 'wrong', timestamp: 't2' });
+    s = recordAnswer(s, { type: 'A', module: 'weak2', verdict: 'wrong', timestamp: 't3' });
+    s = recordAnswer(s, { type: 'A', module: 'weak2', verdict: 'wrong', timestamp: 't4' });
+    s = recordAnswer(s, { type: 'A', module: 'weak2', verdict: 'wrong', timestamp: 't5' });
+    s = recordAnswer(s, { type: 'A', module: 'once', verdict: 'wrong', timestamp: 't6' });
+    const sum = summarizeSession(s);
+    expect(sum.weakModules).toEqual(['weak2', 'weak1']); // weak2 has 3 wrong, weak1 has 2, once has 1 (excluded)
+  });
+
+  it('restricts to entries after `since` timestamp when provided', () => {
+    let s = defaultState();
+    s = recordAnswer(s, { type: 'A', module: 'm', verdict: 'correct', timestamp: '2026-04-19T00:00:00Z' });
+    s = recordAnswer(s, { type: 'A', module: 'm', verdict: 'wrong',   timestamp: '2026-04-20T00:00:00Z' });
+    s = recordAnswer(s, { type: 'A', module: 'm', verdict: 'partial', timestamp: '2026-04-21T00:00:00Z' });
+    const sum = summarizeSession(s, '2026-04-20T00:00:00Z');
+    expect(sum.totalAnswered).toBe(2); // the 2026-04-20 and 2026-04-21 entries
+    expect(sum.verdictCounts.correct).toBe(0);
   });
 });

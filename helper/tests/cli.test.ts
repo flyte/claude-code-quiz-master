@@ -70,6 +70,20 @@ describe('cli: state', () => {
     const out = run(['state', 'load', '--path', path]);
     expect(JSON.parse(out).skillLevel).toBe('intermediate');
   });
+
+  it('session-summary prints summary JSON', () => {
+    const path = join(dir, 'state.json');
+    run(['state', 'init', '--path', path]);
+    run(['state', 'record-answer', '--path', path, '--type', 'A', '--module', 'src/x', '--verdict', 'correct']);
+    run(['state', 'record-answer', '--path', path, '--type', 'B', '--module', 'src/y', '--verdict', 'wrong']);
+    const out = run(['state', 'session-summary', '--path', path]);
+    const sum = JSON.parse(out);
+    expect(sum.totalAnswered).toBe(2);
+    expect(sum.verdictCounts.correct).toBe(1);
+    expect(sum.verdictCounts.wrong).toBe(1);
+    expect(sum.byType.A.correct).toBe(1);
+    expect(sum.byType.B.wrong).toBe(1);
+  });
 });
 
 describe('cli: grade', () => {
