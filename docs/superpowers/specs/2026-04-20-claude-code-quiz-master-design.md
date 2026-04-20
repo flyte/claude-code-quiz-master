@@ -112,7 +112,7 @@ Every MCQ ends with **"✏️ Type your own answer"** as the final option; selec
 
 ## Skill Tracking & Drift
 
-- State stores a rolling window of the **last 20 answers**: `{type, verdict, timestamp}` where verdict ∈ `correct | partial | wrong`.
+- State stores a rolling window of the **last 20 answers**: `{type, module, verdict, timestamp}` where verdict ∈ `correct | partial | wrong`. The `module` field is the path of the primary module the question targeted (used only for remediation bias in scope resolution — **not** for per-module skill levels, which remain a v2 non-goal).
 - Discuss-mode entries and skips count as `partial` (not `wrong`) — don't punish honest "I don't know" over guessing.
 - **Promote** (beginner → intermediate, intermediate → expert): rolling accuracy ≥ 80% AND at least 5 questions at the current level's harder types (C or D for beginner→int; D for int→expert).
 - **Demote**: rolling accuracy ≤ 40% → drop one level.
@@ -240,7 +240,7 @@ While user is answering Q<sub>n</sub>, the skill dispatches Q<sub>n+1</sub>'s gr
 ### LLM-in-the-loop (fuzzy) tests
 
 - **Golden-set fixtures:** small hand-curated repo + hand-written questions with expected verdicts. Run grader against the set, assert ≥ 85% verdict agreement. Manual review when thresholds slip.
-- **Smoke test:** `/quiz --smoke` runs one of each question type end-to-end against the current repo, no crashes, output logged for manual eyeball review.
+- **Smoke test:** `/quiz --smoke` runs one of each applicable question type end-to-end against the current repo (D skipped in non-git / no-diff projects), no crashes, output logged for manual eyeball review.
 - **Dogfooding:** run the plugin on this repo and 1–2 real projects; iterate on skill-file prompt wording.
 
 ### Test layout
