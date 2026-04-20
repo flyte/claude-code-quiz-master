@@ -6,9 +6,24 @@ Agentic coding lets you ship features without reading the code Claude writes. Wh
 
 ## Install
 
-1. Clone or copy this directory into your Claude Code plugins folder.
-2. The helper CLI is shipped pre-built in `helper/dist/`. No build step required.
-3. Restart Claude Code.
+In Claude Code:
+
+```
+/plugin marketplace add flyte/claude-code-quiz-master
+/plugin install claude-code-quiz-master@flyte
+```
+
+The helper CLI ships pre-built in `helper/dist/` — no build step required. After install, `/quiz` is available in any session.
+
+### Local / dev install
+
+If you've cloned the repo and want to iterate locally:
+
+```
+claude --plugin-dir /path/to/claude-code-quiz-master
+```
+
+Run `/reload-plugins` in Claude Code after edits.
 
 ## Usage
 
