@@ -188,6 +188,8 @@ In discuss mode you:
 - Wait for the user to type `next`, `continue`, `ok`, or otherwise signal they're ready.
 - No grading, no penalty. Record verdict as `partial`.
 
+**Review questions in discuss mode:** If a review question (already resurfaced once) is answered wrong/partial and the user enters discuss mode, explain the ground truth using different framing than the first time — simpler language, highlight the core insight, or approach from a different angle. Do not add the question back to the review queue; it has had its one retry.
+
 ## Map building
 
 The map build is I/O-heavy and expensive on your context. Prefer delegating it to a Task subagent (Haiku is fine) rather than walking the repo inline. Give the subagent the required schema and ask it to return the JSON. You then pipe its output through `map save`.
