@@ -76,7 +76,7 @@ grade.command('mcq')
 grade.command('show-me')
   .requiredOption('--user-input <input>')
   .requiredOption('--expected-path <path>')
-  .option('--expected-line <line>', undefined, parseInt)
+  .option('--expected-line <line>', '', (v) => parseInt(v, 10))
   .option('--expected-snippet <snippet>')
   .action((opts) => {
     process.stdout.write(JSON.stringify(gradeShowMe({
@@ -90,12 +90,12 @@ grade.command('show-me')
 const map = program.command('map');
 
 map.command('check-staleness')
-  .requiredOption('--map-schema-version <n>', undefined, parseInt)
-  .requiredOption('--expected-schema-version <n>', undefined, parseInt)
+  .requiredOption('--map-schema-version <n>', '', (v) => parseInt(v, 10))
+  .requiredOption('--expected-schema-version <n>', '', (v) => parseInt(v, 10))
   .requiredOption('--map-sha <sha>')
   .requiredOption('--head-sha <sha>')
-  .requiredOption('--changed-file-count <n>', undefined, parseInt)
-  .requiredOption('--map-age-days <n>', undefined, parseInt)
+  .requiredOption('--changed-file-count <n>', '', (v) => parseInt(v, 10))
+  .requiredOption('--map-age-days <n>', '', (v) => parseInt(v, 10))
   .option('--force')
   .action((opts) => {
     process.stdout.write(JSON.stringify(shouldRefreshMap({

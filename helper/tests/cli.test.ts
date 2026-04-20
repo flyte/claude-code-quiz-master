@@ -90,4 +90,44 @@ describe('cli: map', () => {
     ]);
     expect(JSON.parse(out)).toEqual({ refresh: false });
   });
+
+  it('save writes valid map JSON from stdin to the given path', () => {
+    const mapPath = join(dir, 'quiz-map.json');
+    const mapJson = JSON.stringify({
+      schemaVersion: 1,
+      builtAtSha: 'abc',
+      builtAt: '2026-04-20T10:00:00Z',
+      fileCount: 1,
+      modules: [{ path: 'src/x', summary: 's', keySymbols: [], entrypoints: [] }],
+      globalSymbols: [],
+      architectureNotes: '',
+    });
+    run(['map', 'save', '--path', mapPath], mapJson);
+    expect(existsSync(mapPath)).toBe(true);
+    const parsed = JSON.parse(readFileSync(mapPath, 'utf8'));
+    expect(parsed.modules).toHaveLength(1);
+  });
+
+  it('resolve-scope prints module list from focus arg', () => {
+    const statePath = join(dir, 'state.json');
+    const mapPath = join(dir, 'quiz-map.json');
+    run(['state', 'init', '--path', statePath]);
+    const mapJson = JSON.stringify({
+      schemaVersion: 1,
+      builtAtSha: 'abc',
+      builtAt: '2026-04-20T10:00:00Z',
+      fileCount: 0,
+      modules: [
+        { path: 'src/auth', summary: 'jwt', keySymbols: [], entrypoints: [] },
+        { path: 'src/payments', summary: 'stripe', keySymbols: [], entrypoints: [] },
+      ],
+      globalSymbols: [],
+      architectureNotes: '',
+    });
+    run(['map', 'save', '--path', mapPath], mapJson);
+    const out = run(['map', 'resolve-scope', '--map-path', mapPath, '--state-path', statePath, '--focus', 'auth']);
+    const r = JSON.parse(out);
+    expect(r.source).toBe('focus');
+    expect(r.modules.map((m: { path: string }) => m.path)).toEqual(['src/auth']);
+  });
 });
