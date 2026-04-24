@@ -101,8 +101,8 @@ const map = program.command('map');
 map.command('check-staleness')
   .option('--map-path <path>', 'convenience: read map file for its own sha/version/age')
   .requiredOption('--expected-schema-version <n>', '', (v) => parseInt(v, 10))
-  .requiredOption('--head-sha <sha>')
-  .requiredOption('--changed-file-count <n>', '', (v) => parseInt(v, 10))
+  .option('--head-sha <sha>')
+  .option('--changed-file-count <n>', '', (v) => parseInt(v, 10))
   .option('--map-schema-version <n>', '', (v) => parseInt(v, 10))
   .option('--map-sha <sha>')
   .option('--map-age-days <n>', '', (v) => parseInt(v, 10))
@@ -132,6 +132,11 @@ map.command('check-staleness')
 
     if (mapSchemaVersion === undefined || mapSha === undefined || mapAgeDays === undefined) {
       process.stderr.write('quiz-helper: must provide --map-path or all of --map-schema-version/--map-sha/--map-age-days\n');
+      process.exit(1);
+    }
+
+    if (opts.headSha === undefined || opts.changedFileCount === undefined) {
+      process.stderr.write('quiz-helper: --head-sha and --changed-file-count are required when the map is readable\n');
       process.exit(1);
     }
 

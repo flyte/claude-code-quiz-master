@@ -194,13 +194,33 @@ In discuss mode you:
 
 The map build is I/O-heavy and expensive on your context. Prefer delegating it to a Task subagent (Haiku is fine) rather than walking the repo inline. Give the subagent the required schema and ask it to return the JSON. You then pipe its output through `map save`.
 
+**Ground the schema before dispatching.** Do not guess or paraphrase it. `Read ${CLAUDE_PLUGIN_ROOT}/helper/src/types.ts` first and include the `MapSchema` / `ModuleSchema` / `GlobalSymbolSchema` definitions **verbatim** in the subagent prompt. `map save` will reject anything that doesn't match — a wrong schema wastes the whole subagent run. The top-level shape the subagent must produce is:
+
+```json
+{
+  "schemaVersion": 1,
+  "builtAtSha": "<HEAD sha>",
+  "builtAt": "<ISO timestamp>",
+  "fileCount": <integer>,
+  "modules": [
+    { "path": "...", "summary": "...", "keySymbols": ["..."], "entrypoints": ["..."] }
+  ],
+  "globalSymbols": [
+    { "name": "...", "file": "...", "kind": "function|class|const|type|other", "summary": "..." }
+  ],
+  "architectureNotes": "..."
+}
+```
+
+Treat `types.ts` as the source of truth — if the snippet above ever drifts, the file wins.
+
 If you do build inline (e.g., for a very small repo or a repo you've already read extensively), follow these steps:
 
 When the helper says refresh:
 
 1. Walk the repo: read `package.json` / `tsconfig.json` / `pyproject.toml` / `Cargo.toml` / `go.mod` / `README*` first to ID stack and entrypoints.
 2. Glob top-level source dirs (`src/`, `lib/`, `app/`, `pkg/`, etc.). Sample 2-3 representative files per top-level module.
-3. Compose the map JSON matching the schema (see `helper/src/types.ts MapSchema`).
+3. Compose the map JSON matching `MapSchema` in `helper/src/types.ts` (fields shown above).
 4. Write via stdin: `echo '<map json>' | node ${CLAUDE_PLUGIN_ROOT}/helper/dist/cli.cjs map save --path .claude/quiz-map.json`.
 5. If a partial map is the best you can do (e.g., file-read errors), save what you have and warn the user.
 

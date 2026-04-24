@@ -123,6 +123,26 @@ describe('cli: map', () => {
     expect(JSON.parse(out)).toEqual({ refresh: true, reason: 'missing' });
   });
 
+  it('check-staleness short-circuits on missing map without --head-sha or --changed-file-count', () => {
+    const out = run([
+      'map', 'check-staleness',
+      '--map-path', join(dir, 'does-not-exist.json'),
+      '--expected-schema-version', '1',
+    ]);
+    expect(JSON.parse(out)).toEqual({ refresh: true, reason: 'missing' });
+  });
+
+  it('check-staleness short-circuits on corrupt map without --head-sha or --changed-file-count', () => {
+    const mapPath = join(dir, 'm-bad.json');
+    writeFileSync(mapPath, '{ not json');
+    const out = run([
+      'map', 'check-staleness',
+      '--map-path', mapPath,
+      '--expected-schema-version', '1',
+    ]);
+    expect(JSON.parse(out)).toEqual({ refresh: true, reason: 'corrupt' });
+  });
+
   it('check-staleness with --map-path reads sha + version + age from file', () => {
     const mapPath = join(dir, 'm.json');
     const mapJson = JSON.stringify({

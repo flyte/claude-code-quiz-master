@@ -7439,7 +7439,7 @@ grade.command("show-me").requiredOption("--user-input <input>").requiredOption("
   })));
 });
 var map = program2.command("map");
-map.command("check-staleness").option("--map-path <path>", "convenience: read map file for its own sha/version/age").requiredOption("--expected-schema-version <n>", "", (v) => parseInt(v, 10)).requiredOption("--head-sha <sha>").requiredOption("--changed-file-count <n>", "", (v) => parseInt(v, 10)).option("--map-schema-version <n>", "", (v) => parseInt(v, 10)).option("--map-sha <sha>").option("--map-age-days <n>", "", (v) => parseInt(v, 10)).option("--force").action((opts) => {
+map.command("check-staleness").option("--map-path <path>", "convenience: read map file for its own sha/version/age").requiredOption("--expected-schema-version <n>", "", (v) => parseInt(v, 10)).option("--head-sha <sha>").option("--changed-file-count <n>", "", (v) => parseInt(v, 10)).option("--map-schema-version <n>", "", (v) => parseInt(v, 10)).option("--map-sha <sha>").option("--map-age-days <n>", "", (v) => parseInt(v, 10)).option("--force").action((opts) => {
   let mapSchemaVersion = opts.mapSchemaVersion;
   let mapSha = opts.mapSha;
   let mapAgeDays = opts.mapAgeDays;
@@ -7462,6 +7462,10 @@ map.command("check-staleness").option("--map-path <path>", "convenience: read ma
   }
   if (mapSchemaVersion === void 0 || mapSha === void 0 || mapAgeDays === void 0) {
     process.stderr.write("quiz-helper: must provide --map-path or all of --map-schema-version/--map-sha/--map-age-days\n");
+    process.exit(1);
+  }
+  if (opts.headSha === void 0 || opts.changedFileCount === void 0) {
+    process.stderr.write("quiz-helper: --head-sha and --changed-file-count are required when the map is readable\n");
     process.exit(1);
   }
   process.stdout.write(JSON.stringify(shouldRefreshMap({
