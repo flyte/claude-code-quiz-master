@@ -56,7 +56,10 @@ export function gradeShowMe(input: ShowMeGradeInput): ShowMeGradeResult {
 
     if (!norm.includes('/') && !/\.[a-zA-Z0-9]+$/.test(norm)) continue; // not path-like
 
-    const exact = norm === expectedPathNorm;
+    // Absolute paths: treat as exact if they end with '/' + expectedPathNorm.
+    // Bounding on the leading slash prevents `lib/src/foo.ts` from matching `src/foo.ts`.
+    const absoluteMatch = norm.startsWith('/') && norm.endsWith('/' + expectedPathNorm);
+    const exact = norm === expectedPathNorm || absoluteMatch;
     const filenameMatch = !exact && basename(norm) === expectedBase;
 
     if (exact) {

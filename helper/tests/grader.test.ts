@@ -136,4 +136,28 @@ describe('gradeShowMe', () => {
       expectedPath: 'src/auth/login.ts',
     })).toEqual({ verdict: 'wrong' });
   });
+
+  it('accepts an absolute path whose tail matches the expected relative path', () => {
+    expect(gradeShowMe({
+      userInput: '/home/flyte/dev/proj/src/auth/login.ts',
+      expectedPath: 'src/auth/login.ts',
+    })).toEqual({ verdict: 'correct' });
+  });
+
+  it('accepts an absolute path with line number', () => {
+    expect(gradeShowMe({
+      userInput: '/home/flyte/dev/proj/src/auth/login.ts:41',
+      expectedPath: 'src/auth/login.ts',
+      expectedLine: 40,
+    })).toEqual({ verdict: 'correct' });
+  });
+
+  it('does not treat an absolute path as exact when only a trailing segment matches', () => {
+    // expected is `src/foo.ts`; user gave `/abs/lib/src/foo.ts` — still correct (tail bounded by /).
+    // But `/abs/other/foo.ts` against `src/foo.ts` must NOT be exact — basename-only → partial.
+    expect(gradeShowMe({
+      userInput: '/abs/other/foo.ts',
+      expectedPath: 'src/foo.ts',
+    })).toEqual({ verdict: 'partial' });
+  });
 });

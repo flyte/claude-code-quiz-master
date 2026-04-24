@@ -7287,7 +7287,8 @@ function gradeShowMe(input) {
     const norm = normalizePath(rawPath);
     const line = rawLine && /^\d+$/.test(rawLine) ? Number.parseInt(rawLine, 10) : void 0;
     if (!norm.includes("/") && !/\.[a-zA-Z0-9]+$/.test(norm)) continue;
-    const exact = norm === expectedPathNorm;
+    const absoluteMatch = norm.startsWith("/") && norm.endsWith("/" + expectedPathNorm);
+    const exact = norm === expectedPathNorm || absoluteMatch;
     const filenameMatch = !exact && basename2(norm) === expectedBase;
     if (exact) {
       bestMatch = { path: norm, line, exact: true };
